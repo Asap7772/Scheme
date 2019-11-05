@@ -78,14 +78,16 @@ class Frame(object):
     def define(self, symbol, value):
         """Define Scheme SYMBOL to have VALUE."""
         # BEGIN PROBLEM 2
-        "*** YOUR CODE HERE ***"
+        self.bindings[symbol] = value
         # END PROBLEM 2
 
     def lookup(self, symbol):
         """Return the value bound to SYMBOL. Errors if SYMBOL is not found."""
         # BEGIN PROBLEM 2
-        "*** YOUR CODE HERE ***"
-        # END PROBLEM 2
+        if symbol in self.bindings:
+            return self.bindings[symbol]
+        if self.parent:
+            return self.parent.lookup(symbol)
         raise SchemeError('unknown identifier: {0}'.format(symbol))
 
 
@@ -142,7 +144,12 @@ class BuiltinProcedure(Procedure):
             python_args.append(args.first)
             args = args.rest
         # BEGIN PROBLEM 3
-        "*** YOUR CODE HERE ***"
+        if self.use_env:
+            python_args.append(env)
+        try:
+            return self.fn(*python_args)
+        except TypeError:
+            raise SchemeError('Incorrect Arguments')
         # END PROBLEM 3
 
 class LambdaProcedure(Procedure):
