@@ -33,9 +33,11 @@ def scheme_eval(expr, env, tail=False): # Optional third argument is ignored
         return SPECIAL_FORMS[first](rest, env)
     else:
         # BEGIN PROBLEM 4
-        proc = scheme_eval(first, env)
+        proc = scheme_eval(first, env, tail)
+        if isinstance(proc, MacroProcedure):
+            return scheme_eval(MacroProcedure.apply_macro(proc, rest,env),env, tail)
         check_procedure(proc)
-        return scheme_apply(proc, rest.map(lambda x: scheme_eval(x, env)), env)
+        return scheme_apply(proc, rest.map(lambda x: scheme_eval(x, env,tail)), env)
         # END PROBLEM 4
 
 def self_evaluating(expr):
@@ -62,7 +64,7 @@ def eval_all(expressions, env):
     while a.rest is not nil:
         scheme_eval(a.first,env)
         a = a.rest
-    return scheme_eval(a.first, env)
+    return scheme_eval(a.first, env, True)
     # END PROBLEM 7
 
 ################
@@ -265,15 +267,17 @@ def do_if_form(expressions, env):
     """Evaluate an if form."""
     check_form(expressions, 2, 3)
     if scheme_truep(scheme_eval(expressions.first, env)):
-        return scheme_eval(expressions.rest.first, env)
+        return scheme_eval(expressions.rest.first, env, True)
     elif len(expressions) == 3:
-        return scheme_eval(expressions.rest.rest.first, env)
+        return scheme_eval(expressions.rest.rest.first, env, True)
 
 def do_and_form(expressions, env):
     """Evaluate a (short-circuited) and form."""
     # BEGIN PROBLEM 12
     if expressions is nil:
         return True
+    if expressions.rest == nil:
+        return scheme_eval(expressions.first,env, True)
     evaluatedExpression = scheme_eval(expressions.first,env)
     if scheme_truep(evaluatedExpression):
         if expressions.rest == nil:
@@ -287,6 +291,8 @@ def do_or_form(expressions, env):
     # BEGIN PROBLEM 12
     if expressions is nil:
         return False
+    if expressions.rest == nil:
+        return scheme_eval(expressions.first,env, True)
     evaluatedExpression = scheme_eval(expressions.first,env)
     if scheme_truep(evaluatedExpression):
         return evaluatedExpression
@@ -340,7 +346,17 @@ def make_let_frame(bindings, env):
 def do_define_macro(expressions, env):
     """Evaluate a define-macro form."""
     # BEGIN Problem 20
-    "*** YOUR CODE HERE ***"
+    check_form(expressions, 2)
+    target = expressions.first
+
+    if isinstance(target, Pair) and scheme_symbolp(target.first):
+        # BEGIN PROBLEM 9
+        env.define(target.first, MacroProcedure(target.rest, expressions.rest, env))
+        return target.first
+        # END PROBLEM 9
+    else:
+        bad_target = target.first if isinstance(target, Pair) else target
+        raise SchemeError('non-symbol: {0}'.format(bad_target))
     # END Problem 20
 
 
@@ -519,6 +535,8 @@ class Thunk(object):
     def __init__(self, expr, env):
         self.expr = expr
         self.env = env
+    def __repr__(self):
+        return str(self.expr)
 
 def complete_apply(procedure, args, env):
     """Apply procedure to args in env; ensure the result is not a Thunk."""
@@ -539,7 +557,10 @@ def optimize_tail_calls(original_scheme_eval):
 
         result = Thunk(expr, env)
         # BEGIN
-        "*** YOUR CODE HERE ***"
+        while isinstance(result, Thunk):
+            print("DEBUG:", result)
+            result = original_scheme_eval(result.expr, result.env)
+        return result
         # END
     return optimized_eval
 
@@ -551,12 +572,7 @@ def optimize_tail_calls(original_scheme_eval):
 ################################################################
 # Uncomment the following line to apply tail call optimization #
 ################################################################
-# scheme_eval = optimize_tail_calls(scheme_eval)
-
-
-
-
-
+scheme_eval = optimize_tail_calls(scheme_eval)
 
 ####################
 # Extra Procedures #
