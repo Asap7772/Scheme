@@ -9,12 +9,14 @@
   (map (lambda (x) (cons first x)) rests)
 )
 
+(cons-all 3 `((1)(2)))
+
 (define (zip pairs)
   (cond
     ((null? pairs) (cons nil (cons nil nil)))
     (else
         (begin
-            (define s "\n")
+
             (define x (zip (cdr pairs)))
             (define firstElem (cons (car(car pairs)) (car x)))
             (define secondElem (cons (cons (cadr (car pairs)) (cadr x))nil))
